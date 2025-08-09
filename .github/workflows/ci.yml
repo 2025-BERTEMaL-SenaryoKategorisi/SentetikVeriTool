@@ -1,0 +1,165 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.8, 3.9, "3.10", "3.11"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg libsndfile1
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov flake8
+
+      - name: Lint with flake8
+        run: |
+          # Stop the build if there are Python syntax errors or undefined names
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          # Exit-zero treats all errors as warnings
+          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+      - name: Create test environment file
+        run: |
+          cp .env.example .env
+          echo "GOOGLE_API_KEY=test_key_for_ci" >> .env
+
+      - name: Test configuration loading
+        run: |
+          python -c "from config.config import *; print('Configuration loaded successfully')"
+
+      - name: Test imports
+        run: |
+          python -c "from generators.main_generator import get_next_conversation_id; print('Main generator imports OK')"
+          python -c "from generators.text_only_generator import get_next_text_conversation_id; print('Text-only generator imports OK')"
+
+      - name: Test ID system consistency
+        run: |
+          python -c "
+          from generators.main_generator import get_next_conversation_id
+          from generators.text_only_generator import get_next_text_conversation_id
+          main_id = get_next_conversation_id()
+          text_id = get_next_text_conversation_id()
+          assert main_id == text_id, f'ID mismatch: main={main_id}, text={text_id}'
+          print(f'✅ ID system consistent: both start from {main_id}')
+          "
+
+      - name: Test demo scripts (dry run)
+        run: |
+          # Test that demo scripts can be imported without errors
+          python -c "import demos.text_only_demo; print('Text-only demo imports OK')"
+          python -c "import demos.enhanced_tts_demo; print('Enhanced TTS demo imports OK')"
+
+      - name: Check for sensitive data
+        run: |
+          # Ensure no API keys or sensitive data in code
+          if grep -r "sk-" . --exclude-dir=.git --exclude="*.md" --exclude=".env*"; then
+            echo "❌ Found potential API keys in code!"
+            exit 1
+          fi
+          echo "✅ No sensitive data found in code"
+
+      - name: Validate project structure
+        run: |
+          # Check that all required directories and files exist
+          test -f README.md || (echo "❌ README.md missing" && exit 1)
+          test -f requirements.txt || (echo "❌ requirements.txt missing" && exit 1)
+          test -f .env.example || (echo "❌ .env.example missing" && exit 1)
+          test -f LICENSE || (echo "❌ LICENSE missing" && exit 1)
+          test -d generators || (echo "❌ generators/ directory missing" && exit 1)
+          test -d config || (echo "❌ config/ directory missing" && exit 1)
+          test -d docs || (echo "❌ docs/ directory missing" && exit 1)
+          echo "✅ Project structure validated"
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run security checks
+        run: |
+          # Check for common security issues
+          echo "🔍 Running security checks..."
+
+          # Check for hardcoded secrets
+          if grep -r "password\|secret\|key" . --include="*.py" | grep -v "# " | grep -v "example" | grep -v "template"; then
+            echo "⚠️  Potential hardcoded secrets found - please review"
+          fi
+
+          # Check .gitignore covers sensitive files
+          if ! grep -q ".env" .gitignore; then
+            echo "❌ .env not in .gitignore"
+            exit 1
+          fi
+
+          echo "✅ Security checks passed"
+
+  documentation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check documentation
+        run: |
+          # Ensure key documentation files exist and are not empty
+          test -s README.md || (echo "❌ README.md is empty" && exit 1)
+          test -s CONTRIBUTING.md || (echo "❌ CONTRIBUTING.md is empty" && exit 1)
+          test -s docs/TEXT_ONLY_GUIDE.md || (echo "❌ TEXT_ONLY_GUIDE.md is empty" && exit 1)
+
+          # Check for broken internal links (basic check)
+          if grep -r "\[.*\](.*\.md)" . --include="*.md" | grep -v "http"; then
+            echo "ℹ️  Found internal markdown links - ensure they're valid"
+          fi
+
+          echo "✅ Documentation checks passed"
+
+  build-info:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Display build information
+        run: |
+          echo "🏗️  Build Information"
+          echo "===================="
+          echo "Repository: ${{ github.repository }}"
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "Event: ${{ github.event_name }}"
+          echo "Runner OS: ${{ runner.os }}"
+          echo "Python versions tested: 3.8, 3.9, 3.10, 3.11"
+          echo ""
+          echo "📊 Repository Stats"
+          echo "=================="
+          echo "Total files: $(find . -type f | wc -l)"
+          echo "Python files: $(find . -name "*.py" | wc -l)"
+          echo "Documentation files: $(find . -name "*.md" | wc -l)"
+          echo "Configuration files: $(find . -name "*.json" -o -name "*.yml" -o -name "*.yaml" | wc -l)"
