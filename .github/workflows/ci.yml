@@ -81,7 +81,21 @@ jobs:
       - name: Check for sensitive data
         run: |
           # Ensure no API keys or sensitive data in code
-          if grep -r "sk-" . --exclude-dir=.git --exclude="*.md" --exclude=".env*"; then
+          if grep -r "sk-\|AIza\|AKIA" . \
+            --exclude-dir=.git \
+            --exclude-dir=.venv \
+            --exclude-dir=venv \
+            --exclude-dir=env \
+            --exclude-dir=__pycache__ \
+            --exclude-dir=node_modules \
+            --exclude="*.md" \
+            --exclude=".env*" \
+            --exclude="*.example" \
+            --exclude="*.template" \
+            --include="*.py" \
+            --include="*.js" \
+            --include="*.ts" \
+            --include="*.json" 2>/dev/null; then
             echo "❌ Found potential API keys in code!"
             exit 1
           fi
@@ -109,9 +123,28 @@ jobs:
           # Check for common security issues
           echo "🔍 Running security checks..."
 
-          # Check for hardcoded secrets
-          if grep -r "password\|secret\|key" . --include="*.py" | grep -v "# " | grep -v "example" | grep -v "template"; then
-            echo "⚠️  Potential hardcoded secrets found - please review"
+          # Check for hardcoded secrets (more targeted)
+          if grep -r "password\s*=\s*['\"][^'\"]*['\"]" . \
+            --include="*.py" \
+            --exclude-dir=.venv \
+            --exclude-dir=venv \
+            --exclude-dir=env \
+            --exclude-dir=__pycache__ 2>/dev/null; then
+            echo "❌ Found hardcoded passwords!"
+            exit 1
+          fi
+
+          # Check for actual API key patterns (not just the word "key")
+          if grep -rE "(sk-[a-zA-Z0-9]{48}|AIza[a-zA-Z0-9]{35}|AKIA[A-Z0-9]{16})" . \
+            --include="*.py" \
+            --include="*.js" \
+            --include="*.json" \
+            --exclude-dir=.venv \
+            --exclude-dir=venv \
+            --exclude-dir=env \
+            --exclude-dir=__pycache__ 2>/dev/null; then
+            echo "❌ Found actual API keys in code!"
+            exit 1
           fi
 
           # Check .gitignore covers sensitive files
@@ -155,7 +188,7 @@ jobs:
           echo "Commit: ${{ github.sha }}"
           echo "Event: ${{ github.event_name }}"
           echo "Runner OS: ${{ runner.os }}"
-          echo "Python versions tested: 3.8, 3.9, 3.10, 3.11"
+          echo "Python versions tested: 3.12, 3.13"
           echo ""
           echo "📊 Repository Stats"
           echo "=================="
