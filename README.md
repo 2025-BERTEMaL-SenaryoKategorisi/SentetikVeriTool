@@ -1,8 +1,348 @@
-# Turkish Telecom Synthetic Data Generator
+# 🇹🇷 Turkish Telecom Synthetic Data Generator
+
+## 📋 İçindekiler | Table of Contents
+
+- [🇹🇷 Türkçe](#türkçe-tr)
+- [🇺🇸 English](#english-en)
+
+---
+
+<!-- --Türkçe start -->
+
+# Türkçe (TR)
+
+# 🇹🇷 Türk Telekom Sentetik Veri Üretici
+
+🎤 **TEKNOFEST 2025 Türkçe Doğal Dil İşleme yarışması için profesyonel sentetik veri üretim aracı**
+
+Türk telekom müşteri hizmetleri görüşmeleri için ASR (Otomatik Konuşma Tanıma) ve TTS (Metinden Sese) modellerine yönelik yüksek kaliteli eğitim verisi üretir. Doğru konuşmacı tanımlama ve rol etiketleme özelliklerine sahiptir.
+
+## 🚀 Hızlı Başlangıç
+
+```bash
+# 1. Gerekli paketleri yükleyin
+pip install -r requirements.txt
+
+# 2. Çevre değişkenlerini yapılandırın
+cp .env.example .env
+# .env dosyasını API anahtarlarınızla düzenleyin
+
+# 3. Üreticileri çalıştırın
+python generators/main_generator.py      # Ses üretimi ile
+python generators/text_only_generator.py # Sadece metin (daha hızlı)
+python generators/gcp_generator.py       # GCP versiyonu (yüksek limitler)
+
+# 4. Demo testleri çalıştırın
+python demos/enhanced_tts_demo.py        # Gelişmiş TTS demo
+python demos/text_only_demo.py           # Sadece metin demo
+```
+
+## 📁 Proje Yapısı
+
+```
+SentetikVeri/
+├── generators/           # Ana üretim scriptleri
+│   ├── main_generator.py      # Standart Google AI üretici (ses ile)
+│   ├── text_only_generator.py # Hızlı sadece metin üretici (ses yok)
+│   └── gcp_generator.py       # GCP Vertex AI versiyonu (yüksek limitler)
+├── demos/               # Demo ve test scriptleri
+│   ├── enhanced_tts_demo.py   # Yüksek kaliteli TTS demo
+│   ├── text_only_demo.py      # Sadece metin üretim demo
+│   ├── audio_demo.py          # Temel ses demo
+│   └── simple_audio_demo.py   # Basit TTS test
+├── config/              # Yapılandırma dosyaları
+│   └── config.py           # Ana yapılandırma
+├── data/                # Üretilen veri
+│   ├── outputs/            # Eğitim manifestleri (JSONL)
+│   ├── text_only/          # Sadece metin görüşme verisi
+│   └── audio/              # Üretilen ses dosyaları
+│       ├── agent/          # Ajan ses dosyaları
+│       └── user/           # Kullanıcı ses dosyaları
+├── docs/                # Dokümantasyon
+│   ├── README.md           # Ana dokümantasyon
+│   ├── USAGE_GUIDE.md      # Kullanım talimatları
+│   └── INSTALL_GUIDE.md    # Kurulum rehberi
+├── .env                 # Çevre değişkenleri
+├── requirements.txt     # Python bağımlılıkları
+└── README.md           # Bu dosya
+```
+
+## 🎯 Özellikler
+
+### Temel İşlevsellik
+
+- ✅ **Türk Telekom Senaryoları**: 5 gerçekçi görüşme türü
+- ✅ **Konuşmacı Yönetimi**: Görüşme başına tutarlı ajan sesleri
+- ✅ **Rol Etiketleme**: Doğru ajan/kullanıcı rol ataması
+- ✅ **Niyet ve Slot Çıkarımı**: NLU eğitim verisi
+- ✅ **Ses Üretimi**: Ses varyasyonları ile gerçek WAV dosyaları
+- ✅ **Sadece Metin Üretimi**: Ses olmadan hızlı görüşme üretimi
+- ✅ **JSONL Manifestleri**: Yarışma uyumlu format
+
+### Ses Kalitesi
+
+- 🎤 **Çoklu TTS Sağlayıcılar**: ElevenLabs, Google Cloud TTS, Azure, gTTS
+- 🎵 **Ses Varyasyonları**: Pitch değiştirme, hız kontrolü, arka plan gürültüsü
+- 📊 **Ses Metadata**: Süre, örnekleme hızı, dosya boyutu takibi
+- 🔊 **Kalite Kontrolü**: Doğrulama ve hata yönetimi
+
+### Teknik Özellikler
+
+- ⚡ **Hız Sınırlama**: API dostu üretim
+- 🔄 **Yeniden Deneme Mantığı**: Sağlam hata yönetimi
+- 📈 **İlerleme Takibi**: Gerçek zamanlı üretim durumu
+- 💾 **Verimli Depolama**: Düzenli dosya yapısı
+
+## 🎤 Ses Üretim Süreci
+
+**Sorunuz: "Ses, AI tarafından üretilen JSON scriptlerinden mi geliyor?"**
+
+**Cevap: EVET!** İşte tam iş akışı:
+
+1. **AI JSON üretir** görüşme metni ile:
+
+   ```json
+   {
+     "transcript": "Merhaba, size nasıl yardımcı olabilirim?",
+     "speaker_id": "agent_voice_001",
+     "role": "agent"
+   }
+   ```
+
+2. **TTS metni sese dönüştürür**:
+
+   - `transcript` alanını alır
+   - Ses seçimi için `speaker_id` kullanır
+   - WAV ses dosyası üretir
+
+3. **Ses yolu JSON'a geri eklenir**:
+
+   ```json
+   {
+     "transcript": "Merhaba, size nasıl yardımcı olabilirim?",
+     "audio_filepath": "data/audio/agent/0001_01_20250129_abc123.wav",
+     "speaker_id": "agent_voice_001",
+     "role": "agent",
+     "audio_duration": 3.2,
+     "sample_rate": 16000
+   }
+   ```
+
+4. **Son JSONL hem metin hem de ses içerir** eğitim için.
+
+## 📊 Üretilen Veri Formatı
+
+### Eğitim Manifestosu (JSONL)
+
+```json
+{
+  "conversation_id": 1,
+  "audio_filepath": "data/audio/agent/0001_01_20250129_abc123.wav",
+  "transcript": "Merhaba, size nasıl yardımcı olabilirim?",
+  "speaker_id": "agent_voice_001",
+  "role": "agent",
+  "intent": "greeting",
+  "slot": {},
+  "audio_duration": 3.2,
+  "sample_rate": 16000,
+  "channels": 1,
+  "file_size": 51200
+}
+```
+
+### Çıktı Dosyaları
+
+**Ses Üretimi:**
+
+- `data/outputs/training_manifest.jsonl` - Ses ile tam eğitim verisi
+- `data/outputs/asr_training_data.jsonl` - ASR'ye özgü veri
+- `data/outputs/tts_training_data.jsonl` - TTS'ye özgü veri (sadece ajanlar)
+- `data/audio/agent/` - Ajan ses dosyaları
+- `data/audio/user/` - Kullanıcı ses dosyaları
+
+**Sadece Metin Üretimi:**
+
+- `data/text_only/text_conversations.jsonl` - Tam metin görüşmeleri
+- `data/text_only/text_asr_data.jsonl` - Metin ASR eğitim verisi
+- `data/text_only/text_tts_data.jsonl` - Metin TTS eğitim verisi
+
+## 🔧 Yapılandırma
+
+### Çevre Değişkenleri (.env)
+
+```bash
+# Google AI (Ücretsiz katman)
+GOOGLE_API_KEY=your_google_api_key
+
+# GCP Vertex AI (Daha yüksek limitler)
+GCP_PROJECT_ID=your_project_id
+GCP_LOCATION=us-central1
+GOOGLE_APPLICATION_CREDENTIALS=path/to/service-account.json
+
+# Gelişmiş TTS Sağlayıcılar (İsteğe bağlı)
+ELEVENLABS_API_KEY=your_elevenlabs_key
+GOOGLE_CLOUD_TTS_API_KEY=your_gcp_tts_key
+AZURE_SPEECH_KEY=your_azure_key
+```
+
+### Üretim Ayarları
+
+```python
+NUM_CONVERSATIONS = 50          # Üretilecek görüşme sayısı
+TURNS_PER_DIALOG_MIN = 6       # Görüşme başına minimum tur
+TURNS_PER_DIALOG_MAX = 12      # Görüşme başına maksimum tur
+RATE_LIMIT_DELAY = 1.0         # API çağrıları arası gecikme (saniye)
+```
+
+## 🎯 Telekom Senaryoları
+
+1. **Fatura İtirazı** - Müşteri ücret sorgular
+2. **Teknik Destek** - İnternet/telefon sorunları
+3. **Paket Değişikliği** - Plan yükseltme/düşürme
+4. **Roaming Sorgusu** - Uluslararası kullanım soruları
+5. **Hesap Yönetimi** - Profil güncellemeleri, ödemeler
+
+Her senaryo şunları içerir:
+
+- Gerçekçi görüşme akışı
+- Türk telekom terminolojisi
+- Doğru niyet ilerlemesi
+- Doğal dil kalıpları
+
+## 🎵 Ses Sistemi
+
+### Ajan Sesleri (Profesyonel)
+
+- 10 farklı ajan sesi
+- Görüşme başına tutarlı
+- Profesyonel, yardımcı ton
+- Çeşitlilik için pitch varyasyonları
+
+### Kullanıcı Sesleri (Doğal)
+
+- 20 çeşitli kullanıcı sesi
+- Farklı yaş, cinsiyet, duygular
+- Hız ve pitch varyasyonları
+- Gerçekçi müşteri endişeleri
+
+## 📈 Kullanım Örnekleri
+
+### Ses Üretimi (Tam Pipeline)
+
+```bash
+# Ses dosyaları ile görüşmeler üret
+python generators/main_generator.py
+
+# Gelişmiş TTS sağlayıcıları kullan
+python demos/enhanced_tts_demo.py
+
+# GCP ile üret (yüksek hız limitleri)
+python generators/gcp_generator.py
+```
+
+### Sadece Metin Üretimi (Hızlı ve Verimli)
+
+```bash
+# Sadece metin görüşmeler üret (ses yok)
+python generators/text_only_generator.py
+
+# Sadece metin üretimi test et
+python demos/text_only_demo.py
+```
+
+**Ne zaman sadece metin üretimi kullanılır:**
+
+- ⚡ **Hızlı prototipleme**: Büyük veri setlerini hızla üret
+- 💰 **Maliyet etkin**: TTS API maliyeti yok
+- 🔄 **Yinelemeli geliştirme**: Görüşme mantığını test et
+- 📊 **Büyük ölçekli veri setleri**: Binlerce görüşme üret
+
+### Özel Yapılandırma
+
+```python
+# config/config.py'yi düzenle
+NUM_CONVERSATIONS = 100
+TURNS_PER_DIALOG_MAX = 15
+```
+
+## 🔍 Kalite Doğrulama
+
+Sistem kapsamlı doğrulama içerir:
+
+- ✅ Görüşme yapısı (ajan başlar, kullanıcı bitirir)
+- ✅ Ses dosyası varlığı ve metadata
+- ✅ Transcript uzunluğu (20-200 karakter)
+- ✅ Doğru niyet ilerlemesi
+- ✅ Konuşmacı ID tutarlılığı
+
+## 📊 İstatistik Örneği
+
+```
+🎤 SENTETİK VERİ ÜRETİMİ TAMAMLANDI
+===================================
+✅ Başarılı görüşmeler: 50/50
+📊 Toplam ifade: 420
+🤖 Ajan ifadeleri (TTS): 210
+👤 Kullanıcı ifadeleri: 210
+🎤 Benzersiz ajan sesleri: 10
+🎤 Benzersiz kullanıcı sesleri: 20
+⏱️  Toplam ses süresi: 2.3 saat
+📁 Üretilen ses dosyaları: 420
+```
+
+## 🚀 Sonraki Adımlar
+
+### Ses Eğitim Verisi İçin
+
+1. **Ses üretimi çalıştır**: `python generators/main_generator.py`
+2. **Ses kalitesini test et**: `python demos/enhanced_tts_demo.py`
+3. **Sesleri geliştir**: Premium kalite için ElevenLabs API ekle
+
+### Sadece Metin Eğitim Verisi İçin
+
+1. **Metin üretimi çalıştır**: `python generators/text_only_generator.py`
+2. **Metin kalitesini test et**: `python demos/text_only_demo.py`
+3. **Ölçeklendir**: Binlerce görüşmeyi hızla üret
+
+### Genel
+
+4. **Ayarları yapılandır**: İhtiyaçlarınız için `config/config.py`'yi düzenle
+5. **Modelleri eğit**: ASR/TTS eğitimi için üretilen JSONL dosyalarını kullan
+
+## 🏆 TEKNOFEST 2025 Uyumluluğu
+
+Bu araç, Türkçe Doğal Dil İşleme yarışması için gereken tam formatta veri üretir:
+
+- ✅ Türkçe dil görüşmeleri
+- ✅ Telekom alan özgüllüğü
+- ✅ Konuşmacı tanımlama
+- ✅ Rol etiketleme (ajan/kullanıcı)
+- ✅ Niyet ve slot açıklamaları
+- ✅ Ses dosyası üretimi
+- ✅ JSONL manifest formatı
+
+## 🤝 Destek
+
+Sorular veya sorunlar için:
+
+1. `docs/` içindeki dokümantasyonu kontrol edin
+2. `config/config.py` içindeki yapılandırmayı gözden geçirin
+3. `demos/` içindeki demolarla test edin
+4. `.env` içindeki API anahtarlarını doğrulayın
+
+<!-- --Türkçe end -->
+
+---
+
+<!-- --English start -->
+
+# English (EN)
+
+# 🇺🇸 Turkish Telecom Synthetic Data Generator
 
 🎤 **Professional synthetic data generation tool for TEKNOFEST 2025 Turkish Natural Language Processing competition**
 
-Generate high-quality training data for both ASR (Automatic Speech Recognition) and TTS (Text-to-Speech) models with proper speaker identification and role labeling for Turkish telecom customer service conversations.
+Generates high-quality training data for ASR (Automatic Speech Recognition) and TTS (Text-to-Speech) models focused on Turkish telecom customer service conversations. Features accurate speaker identification and role labeling.
 
 ## 🚀 Quick Start
 
@@ -60,11 +400,11 @@ SentetikVeri/
 
 - ✅ **Turkish Telecom Scenarios**: 5 realistic conversation types
 - ✅ **Speaker Management**: Consistent agent voices per conversation
-- ✅ **Role Labeling**: Proper agent/user role assignment
+- ✅ **Role Labeling**: Accurate agent/user role assignment
 - ✅ **Intent & Slot Extraction**: NLU training data
 - ✅ **Audio Generation**: Real WAV files with voice variations
 - ✅ **Text-Only Generation**: Fast conversation generation without audio
-- ✅ **JSONL Manifests**: Competition-compliant format
+- ✅ **JSONL Manifests**: Competition-compatible format
 
 ### Audio Quality
 
@@ -316,6 +656,8 @@ For questions or issues:
 2. Review configuration in `config/config.py`
 3. Test with demos in `demos/`
 4. Verify API keys in `.env`
+
+<!-- --English end -->
 
 ---
 
