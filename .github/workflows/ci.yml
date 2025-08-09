@@ -81,8 +81,11 @@ jobs:
       - name: Check for sensitive data
         run: |
           # Ensure no API keys or sensitive data in code
-          if grep -r "sk-\|AIza\|AKIA" . \
+          # Check for OpenAI API keys, Google AI keys, and AWS keys
+          PATTERNS="sk-|AIza|AKIA"
+          if grep -r "$PATTERNS" . \
             --exclude-dir=.git \
+            --exclude-dir=.github \
             --exclude-dir=.venv \
             --exclude-dir=venv \
             --exclude-dir=env \
@@ -135,10 +138,16 @@ jobs:
           fi
 
           # Check for actual API key patterns (not just the word "key")
-          if grep -rE "(sk-[a-zA-Z0-9]{48}|AIza[a-zA-Z0-9]{35}|AKIA[A-Z0-9]{16})" . \
+          # Use variables to avoid self-detection
+          SK_PATTERN="sk-[a-zA-Z0-9]{48}"
+          GOOGLE_PATTERN="AIza[a-zA-Z0-9]{35}"
+          AWS_PATTERN="AKIA[A-Z0-9]{16}"
+          if grep -rE "($SK_PATTERN|$GOOGLE_PATTERN|$AWS_PATTERN)" . \
             --include="*.py" \
             --include="*.js" \
             --include="*.json" \
+            --exclude-dir=.git \
+            --exclude-dir=.github \
             --exclude-dir=.venv \
             --exclude-dir=venv \
             --exclude-dir=env \
